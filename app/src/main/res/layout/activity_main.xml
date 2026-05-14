@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:contentDescription="@string/money_detector"
+    tools:context=".MainActivity">
+
+    <!-- Camera Preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/camera_feed" />
+
+    <!-- Flash Button (Fullsize) -->
+    <Button
+        android:id="@+id/flashButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/flash"
+        android:contentDescription="@string/toggle_flash"
+        android:accessibilityLiveRegion="polite"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Status Text (for accessibility and debugging) -->
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="@string/initializing"
+        android:textSize="14sp"
+        android:textColor="@android:color/white"
+        android:background="#80000000"
+        android:contentDescription="@string/detection_status"
+        android:accessibilityLiveRegion="polite"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Confidence Display -->
+    <TextView
+        android:id="@+id/confidenceText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="@string/confidence_placeholder"
+        android:textSize="12sp"
+        android:textColor="@android:color/white"
+        android:background="#80000000"
+        android:contentDescription="@string/confidence_score"
+        android:accessibilityLiveRegion="polite"
+        app:layout_constraintTop_toBottomOf="@+id/statusText" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

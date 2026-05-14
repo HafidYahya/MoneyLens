@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">MoneyLens</string>
+    <string name="money_detector">Pendeteksi Uang untuk Tunanetra</string>
+    <string name="camera_feed">Live feed dari kamera</string>
+    <string name="flash">Flash</string>
+    <string name="toggle_flash">Nyalakan atau matikan lampu flash</string>
+    <string name="initializing">Menginisialisasi kamera...</string>
+    <string name="detection_status">Status Deteksi</string>
+    <string name="confidence_score">Skor Kepercayaan</string>
+    <string name="confidence_placeholder">Confidence: 0%</string>
+    <string name="camera_error">Gagal mengakses kamera. Pastikan izin telah diberikan.</string>
+    <string name="model_error">Gagal memuat model TensorFlow Lite</string>
+    <string name="detecting">Mendeteksi...</string>
+    <string name="detected">Terdeteksi</string>
+    <string name="flash_on">Flash dinyalakan</string>
+    <string name="flash_off">Flash dimatikan</string>
+</resources>
