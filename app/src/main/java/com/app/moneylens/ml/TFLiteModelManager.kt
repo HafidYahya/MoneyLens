@@ -2,188 +2,219 @@ package com.app.moneylens.ml
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
+import android.util.Log
 import org.tensorflow.lite.Interpreter
-import java.io.File
 import java.io.FileInputStream
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 
 /**
  * TensorFlow Lite Model Manager for Rupiah Classifier
+ *
  * Model Specs:
- * - Input: 224x224 RGB images (float32, normalized 0-1)
- * - Output: 7 softmax probabilities (Rp 1000-100000)
- * - Threshold: 85% confidence for reliable detection
+ * - Input  : [1, 224, 224, 3] float32, normalized 0.0–1.0 (RGB)
+ * - Output : [1, 8] softmax probabilities (Rp 1000–100000 + Non Rupiah)
+ *
+ * Preprocessing pipeline (identical to Python training):
+ *   1. Center crop → square
+ *   2. Resize to 224×224 (bilinear)
+ *   3. Force ARGB_8888
+ *   4. Extract RGB, normalize / 255.0f
+ *   5. Rewind buffer → run inference
  */
 class TFLiteModelManager(private val context: Context) {
+
     private var interpreter: Interpreter? = null
-    private var inputShape: IntArray = intArrayOf()
-    private var outputShape: IntArray = intArrayOf()
-    private var labels: List<String> = emptyList()
+    private var inputShape: IntArray      = intArrayOf()
+    private var outputShape: IntArray     = intArrayOf()
+    private var labels: List<String>      = emptyList()
+
+    // ─── Data class ────────────────────────────────────────────────────────────
+
+    data class DetectionResult(
+        val label      : String,
+        val confidence : Float,   // 0–100%
+        val margin     : Float,   // top1 prob – top2 prob (0.0–1.0)
+        val allProbs   : FloatArray,
+        val isConfident: Boolean  // true jika confidence ≥ threshold AND margin ≥ margin threshold
+    )
+
+    // ─── Model loading ─────────────────────────────────────────────────────────
 
     fun loadModel(modelPath: String): Boolean {
         return try {
             val file = File(context.filesDir.parent, "app_flutter/models/$modelPath")
-            if (!file.exists()) {
-                // Try loading from assets
-                loadModelFromAssets(modelPath)
-            } else {
-                loadModelFromFile(file)
-            }
+            if (file.exists()) loadModelFromFile(file) else loadModelFromAssets(modelPath)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "loadModel error, fallback to assets", e)
             loadModelFromAssets(modelPath)
         }
     }
 
     private fun loadModelFromAssets(modelPath: String): Boolean {
         return try {
-            val assetFileDescriptor = context.assets.openFd(modelPath)
-            val fileInputStream = FileInputStream(assetFileDescriptor.fileDescriptor)
-            val fileChannel = fileInputStream.channel
-            val startOffset = assetFileDescriptor.startOffset
-            val declaredLength = assetFileDescriptor.declaredLength
-            val mappedByteBuffer = fileChannel.map(
+            val afd           = context.assets.openFd(modelPath)
+            val channel       = FileInputStream(afd.fileDescriptor).channel
+            val mappedBuffer  = channel.map(
                 FileChannel.MapMode.READ_ONLY,
-                startOffset,
-                declaredLength
+                afd.startOffset,
+                afd.declaredLength
             )
 
-            interpreter = Interpreter(mappedByteBuffer)
+            val options = Interpreter.Options().apply {
+                numThreads = 4          // Gunakan 4 thread CPU
+                useNNAPI   = true       // Aktifkan NNAPI accelerator jika tersedia
+            }
 
-            // Get input and output info
-            inputShape = interpreter!!.getInputTensor(0).shape()
-            outputShape = interpreter!!.getOutputTensor(0).shape()
+            interpreter  = Interpreter(mappedBuffer, options)
+            inputShape   = interpreter!!.getInputTensor(0).shape()
+            outputShape  = interpreter!!.getOutputTensor(0).shape()
 
+            Log.d(TAG, "Model loaded from assets: $modelPath")
+            Log.d(TAG, "Input shape  : ${inputShape.toList()}")
+            Log.d(TAG, "Output shape : ${outputShape.toList()}")
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "loadModelFromAssets failed", e)
             false
         }
     }
 
     private fun loadModelFromFile(file: File): Boolean {
         return try {
-            val fileInputStream = FileInputStream(file)
-            val fileChannel = fileInputStream.channel
-            val mappedByteBuffer = fileChannel.map(
-                FileChannel.MapMode.READ_ONLY,
-                0,
-                fileChannel.size()
-            )
+            val channel      = FileInputStream(file).channel
+            val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
 
-            interpreter = Interpreter(mappedByteBuffer)
+            val options = Interpreter.Options().apply {
+                numThreads = 4
+                useNNAPI   = true
+            }
 
-            // Get input and output info
-            inputShape = interpreter!!.getInputTensor(0).shape()
-            outputShape = interpreter!!.getOutputTensor(0).shape()
+            interpreter  = Interpreter(mappedBuffer, options)
+            inputShape   = interpreter!!.getInputTensor(0).shape()
+            outputShape  = interpreter!!.getOutputTensor(0).shape()
 
+            Log.d(TAG, "Model loaded from file: ${file.path}")
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "loadModelFromFile failed", e)
             false
         }
     }
 
     fun loadLabels(labelPath: String): Boolean {
         return try {
-            val inputStream = context.assets.open(labelPath)
-            val content = inputStream.bufferedReader().use { it.readText() }
-            labels = content.split("\n").filter { it.isNotEmpty() }
+            val text = context.assets.open(labelPath).bufferedReader().use { it.readText() }
+            labels   = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+            Log.d(TAG, "Labels loaded (${labels.size}): $labels")
             true
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "loadLabels failed", e)
             false
         }
     }
 
-    data class DetectionResult(
-        val label: String,
-        val confidence: Float,
-        val isConfident: Boolean // true jika confidence >= 85%
-    )
+    // ─── Inference ─────────────────────────────────────────────────────────────
 
     fun detectImage(bitmap: Bitmap): DetectionResult? {
         return try {
-            if (interpreter == null || inputShape.isEmpty()) {
+            if (interpreter == null || inputShape.size < 4) {
+                Log.w(TAG, "Interpreter not ready")
                 return null
             }
 
-            // Input shape format: [batch, height, width, channels] = [1, 224, 224, 3]
-            if (inputShape.size < 4) {
-                return null
-            }
+            val inputHeight   = inputShape[1]   // 224
+            val inputWidth    = inputShape[2]   // 224
+            val inputChannels = inputShape[3]   // 3
 
-            val inputBatch = inputShape[0]
-            val inputHeight = inputShape[1]
-            val inputWidth = inputShape[2]
-            val inputChannels = inputShape[3]
-
-            // Validate expected dimensions for Rupiah classifier
             if (inputHeight != 224 || inputWidth != 224 || inputChannels != 3) {
+                Log.e(TAG, "Unexpected input shape: ${inputShape.toList()}")
                 return null
             }
 
-            // Resize bitmap to match model input
-            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true)
+            // ── Step 1: Center crop → square ──────────────────────────────────
+            val squareSize = minOf(bitmap.width, bitmap.height)
+            val cropX      = (bitmap.width  - squareSize) / 2
+            val cropY      = (bitmap.height - squareSize) / 2
+            val cropped    = Bitmap.createBitmap(bitmap, cropX, cropY, squareSize, squareSize)
 
-            // Convert bitmap to ByteBuffer with normalization (pixel / 255.0f)
-            val inputBuffer = ByteBuffer.allocateDirect(
-                4 * inputBatch * inputHeight * inputWidth * inputChannels
-            )
+            // ── Step 2: Resize ke 224×224 (bilinear = true) ───────────────────
+            val resized = Bitmap.createScaledBitmap(cropped, inputWidth, inputHeight, true)
+
+            // ── Step 3: Pastikan format ARGB_8888 ─────────────────────────────
+            val argb = if (resized.config == Bitmap.Config.ARGB_8888) {
+                resized
+            } else {
+                resized.copy(Bitmap.Config.ARGB_8888, false)
+            }
+
+            // ── Step 4: Isi ByteBuffer (R, G, B per pixel, normalized 0–1) ────
+            val bufferSize  = 4 * inputHeight * inputWidth * inputChannels
+            val inputBuffer = ByteBuffer.allocateDirect(bufferSize)
             inputBuffer.order(ByteOrder.nativeOrder())
 
-            // Extract RGB pixels and normalize to 0-1 range
             val pixels = IntArray(inputWidth * inputHeight)
-            resizedBitmap.getPixels(pixels, 0, inputWidth, 0, 0, inputWidth, inputHeight)
+            argb.getPixels(pixels, 0, inputWidth, 0, 0, inputWidth, inputHeight)
 
             for (pixel in pixels) {
-                // Extract RGB components and normalize
-                val r = ((pixel shr 16) and 0xFF) / 255.0f
-                val g = ((pixel shr 8) and 0xFF) / 255.0f
-                val b = (pixel and 0xFF) / 255.0f
-
-                inputBuffer.putFloat(r)
-                inputBuffer.putFloat(g)
-                inputBuffer.putFloat(b)
+                inputBuffer.putFloat(((pixel shr 16) and 0xFF) / 255.0f)   // R
+                inputBuffer.putFloat(((pixel shr 8)  and 0xFF) / 255.0f)   // G
+                inputBuffer.putFloat((pixel           and 0xFF) / 255.0f)   // B
             }
 
+            // ── Step 5: Rewind SETELAH mengisi buffer ─────────────────────────
             inputBuffer.rewind()
 
-             // Prepare output buffer for 8 classes (Rp 1000-100000 + Non Rupiah)
-             val outputSize = outputShape.getOrNull(1) ?: 8
-             val outputBuffer = Array(1) { FloatArray(outputSize) }
-
-            // Run inference
+            // ── Step 6: Run inference ─────────────────────────────────────────
+            val outputSize   = outputShape.getOrNull(1) ?: labels.size
+            val outputBuffer = Array(1) { FloatArray(outputSize) }
             interpreter!!.run(inputBuffer, outputBuffer)
 
-            // Get results from softmax output
-            val probabilities = outputBuffer[0]
-            val maxIndex = probabilities.indices.maxByOrNull { probabilities[it] } ?: 0
-            val confidenceScore = probabilities[maxIndex]
-            val confidencePercent = confidenceScore * 100f
-            val isConfident = confidencePercent >= CONFIDENCE_THRESHOLD
+            // ── Step 7: Parse hasil ───────────────────────────────────────────
+            val probs    = outputBuffer[0]
+            val maxIndex = probs.indices.maxByOrNull { probs[it] } ?: 0
+            val confidence = probs[maxIndex] * 100f
+
+            // Hitung margin: selisih top-1 dan top-2
+            val sorted = probs.sortedDescending()
+            val margin = if (sorted.size >= 2) sorted[0] - sorted[1] else 1.0f
+
+            val label = if (maxIndex < labels.size) labels[maxIndex] else "Unknown"
+            val isConfident = confidence >= CONFIDENCE_THRESHOLD &&
+                    margin     >= MARGIN_THRESHOLD
+
+            Log.d(TAG, "Result → label: $label | conf: ${"%.1f".format(confidence)}% " +
+                    "| margin: ${"%.3f".format(margin)} | confident: $isConfident")
 
             DetectionResult(
-                label = if (maxIndex < labels.size) labels[maxIndex] else "Unknown",
-                confidence = confidencePercent,
+                label       = label,
+                confidence  = confidence,
+                margin      = margin,
+                allProbs    = probs,
                 isConfident = isConfident
             )
+
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "detectImage error", e)
             null
         }
     }
 
+    // ─── Cleanup ───────────────────────────────────────────────────────────────
+
     fun close() {
         interpreter?.close()
+        interpreter = null
+        Log.d(TAG, "Interpreter closed")
     }
+
+    // ─── Constants ─────────────────────────────────────────────────────────────
 
     companion object {
-        private const val CONFIDENCE_THRESHOLD = 85f
+        private const val TAG                  = "TFLiteModelManager"
+        const        val CONFIDENCE_THRESHOLD  = 85f     // Minimum confidence (%)
+        private      val MARGIN_THRESHOLD      = 0.15f   // Minimum top1–top2 gap
     }
 }
-
