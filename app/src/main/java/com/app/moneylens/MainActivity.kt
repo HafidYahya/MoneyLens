@@ -13,6 +13,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.app.moneylens.auth.SessionManager
 import com.app.moneylens.camera.CameraManager
 import com.app.moneylens.ml.TFLiteModelManager
 import com.app.moneylens.tts.TextToSpeechManager
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private var cameraManager  : CameraManager?        = null
     private var tfliteManager  : TFLiteModelManager?   = null
     private var ttsManager     : TextToSpeechManager?  = null
+    private var sessionManager : SessionManager?       = null
 
     // ─── State ─────────────────────────────────────────────────────────────────
     private var isProcessing        = false
@@ -72,6 +74,10 @@ class MainActivity : AppCompatActivity() {
         flashButton    = findViewById(R.id.flashButton)
         statusText     = findViewById(R.id.statusText)
         confidenceText = findViewById(R.id.confidenceText)
+
+        // Initialize SessionManager untuk update last active time
+        sessionManager = SessionManager(this)
+        sessionManager?.updateLastActive()
 
         if (PermissionManager.hasAllPermissions(this)) {
             initializeApp()

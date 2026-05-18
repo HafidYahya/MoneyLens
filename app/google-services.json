@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "337004359665",
+    "project_id": "moneylens-14dfd",
+    "storage_bucket": "moneylens-14dfd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:337004359665:android:a7b76f312c620a61f35e50",
+        "android_client_info": {
+          "package_name": "com.app.moneylens"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "337004359665-t3u9df6csmdhumtqktvp98hkdmv6ckki.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.app.moneylens",
+            "certificate_hash": "a37beddfd669fa97ce5cfacf1a35e437b91f80b2"
+          }
+        },
+        {
+          "client_id": "337004359665-16rpibcvk2dpuf8k13rb03954tu7pp34.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUvzjWISgkE9ags7CqexOsX4B9-2rXFYo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "337004359665-16rpibcvk2dpuf8k13rb03954tu7pp34.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

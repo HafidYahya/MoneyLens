@@ -6,4 +6,7 @@
     </style>
 
     <style name="Theme.MoneyLens" parent="Base.Theme.MoneyLens" />
+
+    <!-- NoActionBar theme for SplashActivity & LoginActivity -->
+    <style name="Theme.MoneyLens.NoActionBar" parent="Theme.MoneyLens" />
 </resources>
