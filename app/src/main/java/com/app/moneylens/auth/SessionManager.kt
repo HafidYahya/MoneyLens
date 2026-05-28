@@ -19,6 +19,7 @@ class SessionManager(private val context: Context) {
 
     // ─── Keys ────────────────────────────────────────────────────
     companion object {
+        private const val KEY_USER_ID = "user_id"
         private const val KEY_FIREBASE_UID = "firebase_uid"
         private const val KEY_EMAIL = "email"
         private const val KEY_DISPLAY_NAME = "display_name"
@@ -41,7 +42,8 @@ class SessionManager(private val context: Context) {
         email: String,
         displayName: String,
         photoUrl: String?,
-        provider: String = "google.com"
+        provider: String = "google.com",
+        userId: Int? = null
     ) {
         sharedPreferences.edit().apply {
             putString(KEY_FIREBASE_UID, firebaseUid)
@@ -51,6 +53,9 @@ class SessionManager(private val context: Context) {
             putString(KEY_PROVIDER, provider)
             putString(KEY_EMAIL_VERIFIED, "true")
             putString(KEY_LAST_SIGN_IN, System.currentTimeMillis().toString())
+            if (userId != null) {
+                putInt(KEY_USER_ID, userId)
+            }
             apply()
         }
         // Update device info otomatis saat sign in
@@ -68,6 +73,11 @@ class SessionManager(private val context: Context) {
             provider = sharedPreferences.getString(KEY_PROVIDER, "google.com") ?: "google.com",
             emailVerified = sharedPreferences.getString(KEY_EMAIL_VERIFIED, "false") == "true"
         )
+    }
+
+    fun getUserId(): Int? {
+        val id = sharedPreferences.getInt(KEY_USER_ID, -1)
+        return if (id > 0) id else null
     }
 
     // ─── Device Info ────────────────────────────────────────────

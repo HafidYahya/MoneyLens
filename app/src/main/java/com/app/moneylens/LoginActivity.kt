@@ -147,6 +147,15 @@ class LoginActivity : AppCompatActivity() {
                         Log.d(TAG, "User synced to database successfully")
                         statusText.text = "Login berhasil! Membuka aplikasi..."
                         
+                        // Save user ID from response
+                        sessionManager.saveUserData(
+                            firebaseUid = result.data.firebaseUid,
+                            email = result.data.email,
+                            displayName = result.data.displayName,
+                            photoUrl = result.data.photoUrl,
+                            userId = result.data.id
+                        )
+                        
                         // Go to MainActivity
                         startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                         finish()

@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -49,6 +50,16 @@ interface MoneyLensApiService {
     fun updateUser(
         @Path("id") id: Int,
         @Body request: UpdateUserRequest
+    ): Call<ApiResponse<UserResponse>>
+
+    /**
+     * PATCH /moneylens-users/{id}/last-active
+     * Update last_active_at timestamp
+     */
+    @PATCH("moneylens-users/{id}/last-active")
+    fun updateLastActive(
+        @Path("id") id: Int,
+        @Body request: UpdateLastActiveRequest
     ): Call<ApiResponse<UserResponse>>
 }
 
@@ -110,6 +121,11 @@ data class UpdateUserRequest(
     
     @SerializedName("display_name")
     val displayName: String? = null
+)
+
+data class UpdateLastActiveRequest(
+    @SerializedName("last_active_at")
+    val lastActiveAt: String? = null
 )
 
 data class UserResponse(

@@ -14,14 +14,16 @@
     <string name="detected">Terdeteksi</string>
     <string name="flash_on">Flash dinyalakan</string>
     <string name="flash_off">Flash dimatikan</string>
+    <string name="splash_description">Memuat aplikasi</string>
 
     <!-- Login & Splash Strings -->
     <string name="login_screen">Layar Login</string>
     <string name="splash_screen">Layar Splash</string>
-    <string name="login_subtitle">Deteksi nominasi uang kertas untuk tunanetra</string>
+    <string name="login_subtitle">Deteksi nominasi uang kertas untuk tunanetra. Silahkan login menggunakan akun google anda</string>
     <string name="sign_in_with_google">Login dengan Google</string>
     <string name="ready_to_login">Siap untuk login</string>
     <string name="loading">Sedang memuat</string>
     <string name="status_message">Pesan Status</string>
+    <string name="app_status">Status aplikasi, informasi deteksi uang</string>
     <string name="default_web_client_id">337004359665-16rpibcvk2dpuf8k13rb03954tu7pp34.apps.googleusercontent.com</string>
 </resources>

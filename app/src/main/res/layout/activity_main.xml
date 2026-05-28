@@ -5,7 +5,6 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:contentDescription="@string/money_detector"
     tools:context=".MainActivity">
 
     <!-- Camera Preview -->
@@ -13,9 +12,11 @@
         android:id="@+id/previewView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:contentDescription="@string/camera_feed" />
+        android:contentDescription="@null"
+        android:importantForAccessibility="no" />
 
     <!-- Flash Button (Fullsize) -->
+    <!-- DISABLED during init - TalkBack cannot grab focus -->
     <Button
         android:id="@+id/flashButton"
         android:layout_width="match_parent"
@@ -23,11 +24,17 @@
         android:text="@string/flash"
         android:contentDescription="@string/toggle_flash"
         android:accessibilityLiveRegion="polite"
+        android:importantForAccessibility="no"
+        android:screenReaderFocusable="false"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:enabled="false"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <!-- Status Text (for accessibility and debugging) -->
+    <!-- NOT ACCESSIBLE to TalkBack - info delivered via TTS only -->
     <TextView
         android:id="@+id/statusText"
         android:layout_width="match_parent"
@@ -37,11 +44,13 @@
         android:textSize="14sp"
         android:textColor="@android:color/white"
         android:background="#80000000"
-        android:contentDescription="@string/detection_status"
-        android:accessibilityLiveRegion="polite"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:screenReaderFocusable="false"
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- Confidence Display -->
+    <!-- TalkBack ignores this - purely visual debug info -->
     <TextView
         android:id="@+id/confidenceText"
         android:layout_width="match_parent"
@@ -51,8 +60,8 @@
         android:textSize="12sp"
         android:textColor="@android:color/white"
         android:background="#80000000"
-        android:contentDescription="@string/confidence_score"
-        android:accessibilityLiveRegion="polite"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
         app:layout_constraintTop_toBottomOf="@+id/statusText" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

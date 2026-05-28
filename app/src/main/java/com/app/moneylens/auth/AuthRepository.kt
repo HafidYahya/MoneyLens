@@ -4,6 +4,7 @@ import android.util.Log
 import com.app.moneylens.api.ApiResult
 import com.app.moneylens.api.CreateUserRequest
 import com.app.moneylens.api.MoneyLensApiService
+import com.app.moneylens.api.UpdateLastActiveRequest
 import com.app.moneylens.api.UserResponse
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -95,6 +96,53 @@ class AuthRepository(
     private fun getCurrentTimestamp(): String {
         val formatter = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
         return formatter.format(java.util.Date())
+    }
+
+    // ─── Update last active ke API ─────────────────────────────────
+    suspend fun updateLastActiveToApi(userId: Int): ApiResult<UserResponse> {
+        val request = UpdateLastActiveRequest(
+            lastActiveAt = getCurrentTimestamp()
+        )
+
+        return suspendCancellableCoroutine { continuation ->
+            try {
+                apiService.updateLastActive(userId, request).enqueue(
+                    object : Callback<com.app.moneylens.api.ApiResponse<UserResponse>> {
+                        override fun onResponse(
+                            call: Call<com.app.moneylens.api.ApiResponse<UserResponse>>,
+                            response: Response<com.app.moneylens.api.ApiResponse<UserResponse>>
+                        ) {
+                            if (response.isSuccessful) {
+                                val apiResponse = response.body()
+                                if (apiResponse?.data != null) {
+                                    continuation.resume(ApiResult.Success(apiResponse.data))
+                                    Log.d(TAG, "Last active updated successfully")
+                                } else {
+                                    val error = apiResponse?.message ?: "Empty data"
+                                    continuation.resume(ApiResult.Error(error))
+                                    Log.w(TAG, "API response with no data: $error")
+                                }
+                            } else {
+                                val message = response.message() ?: "API Error"
+                                continuation.resume(ApiResult.Error(message, response.code()))
+                                Log.e(TAG, "API Error: ${response.code()} - $message")
+                            }
+                        }
+
+                        override fun onFailure(
+                            call: Call<com.app.moneylens.api.ApiResponse<UserResponse>>,
+                            t: Throwable
+                        ) {
+                            continuation.resume(ApiResult.Error(t.message ?: "Network error"))
+                            Log.e(TAG, "Network error: ${t.message}", t)
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                continuation.resumeWithException(e)
+                Log.e(TAG, "Exception in updateLastActive: ${e.message}", e)
+            }
+        }
     }
 
     // ─── Sign out ──────────────────────────────────────────────────
